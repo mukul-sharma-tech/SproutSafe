@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Uninstall Instructions</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; padding: 24px; background: #1a1a2e; color: #eee; }
+    pre { white-space: pre-wrap; background: #0f0f1a; padding: 16px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h2>To uninstall Cipher Desktop Agent</h2>
+  <p>Follow these steps for your operating system:</p>
+  <pre id="steps"></pre>
+  <p>After uninstalling, the agent will no longer run on this computer.</p>
+  <script>
+    const os = navigator.platform.includes("Win") ? "win" : navigator.platform.includes("Mac") ? "mac" : "linux";
+    const steps = {
+      win: "1. Open Settings > Apps > Apps & features\n2. Find 'Cipher Desktop Agent' and click Uninstall",
+      mac: "1. Quit the agent from the menu bar first (requires parent password)\n2. Open Applications folder and drag Cipher Desktop Agent to Trash",
+      linux: "1. Remove the application from your app menu or run the uninstaller provided during installation",
+    };
+    document.getElementById("steps").textContent = steps[os] || steps.linux;
+  </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f9f9f9;
+      padding: 20px;
+      width: 250px;
+      text-align: center;
+    }
+
+    h2 { color: #2c3e50; margin-bottom: 8px; }
+    p { margin-top: 0; color: #555; }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    button {
+      margin-top: 10px;
+      width: 100%;
+      padding: 8px;
+      background-color: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover { background-color: #6d28d9; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #success-message {
+      display: none;
+      font-size: 14px;
+      font-weight: bold;
+      color: green;
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="form">
+    <h3>SproutSafe Enabled</h3>
+    <p>Browsing safely</p>
+    <input type="text" id="jwtToken" placeholder="Enter token" />
+    <div id="scanOrPaste" style="display: flex; gap: 6px; margin-top: 8px;">
+      <button type="button" id="scanQR" style="flex: 1; background: #5b21b6;">Scan QR</button>
+      <span style="align-self: center; color: #888; font-size: 11px;">or paste above</span>
+    </div>
+    <input type="password" id="parentPassword" placeholder="Enter password" />
+    <div id="errorMessage" style="display: none; color: #f44336; font-size: 11px; margin-top: 5px; font-weight: bold; text-align: center;"></div>
+    <button id="saveToken">Activate</button>
+    <button id="disconnectExtension" style="display: none; background-color: #f44336;">Disconnect</button>
+    <div id="lockoutTimer" style="display: none; margin-top: 15px; padding: 10px; background: #ffebee; border: 1px solid #ef5350; border-radius: 5px; color: #c62828; font-weight: bold; font-size: 14px;">
+      Lockout: <span id="timerValue">00:00:00</span>
+    </div>
+  </div>
+
+  <div id="success-message">Your protection is now active.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

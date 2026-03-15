@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "SproutSafe",
+  "version": "1.0",
+  "description": "Blur offensive images and remove offensive text for safe browsing — powered by SproutSafe",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "http://127.0.0.1:3030/*",
+    "http://localhost:5000/*"
+  ],
+  "background": {
+    "service_worker": "urlMonitoring.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "type": "module"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "favicon.png"
+  },
+  "icons": {
+    "128": "favicon.png"
+  },
+  "incognito": "spanning"
+}
