@@ -1,170 +1,245 @@
-# CipherGuard - Team Phoenix 
+# SproutSafe
 
-#### Website - https://cipher-flame-nine.vercel.app/
-#### Explanatory Video - https://www.youtube.com/watch?v=q7_hN1c3RNs
-#### Cipherguard Chrome Extension + Desktop App 
+A full-stack parental control platform that monitors children's browsing activity, blocks harmful content, and gives parents real-time visibility — without spying.
 
-
-CipherGuard is a full-stack parental-control platform consisting of a browser-based dashboard and a Node.js/Express API backed by MongoDB. It enables parents to monitor, manage, and protect their children’s online activity across devices through real-time monitoring, URL blocking, and incognito alerts.
-
-This repository is a monorepo with separate frontend and backend applications:
-
-- `frontend/` – React + TypeScript + Vite + Tailwind + shadcn-ui dashboard.
-- `backend/` – Node.js + Express + MongoDB REST API.
-
-> Note: The GitHub repo name `Vihaan8.0` reflects the competition this project was built for; the product itself is **CipherGuard**.
-
-## Key Features
-
-- **User Authentication** – JWT-based parent authentication (signup/login) and protected APIs.
-- **Parent Dashboard** – Central dashboard showing parent profile, monitored children, and high-level stats.
-- **Child Profiles** – Create and manage multiple child profiles linked to a parent account.
-- **Activity Monitoring** – Track per-domain browsing activity and aggregate daily usage statistics.
-- **Device & Protection UI** – Simulated device list and protection toggles in the UI for future expansion.
-- **Real-time-style Notifications** – UI for alerts and notifications about child activity (backed by real and placeholder data).
-- **Reports & Analytics UI** – UI for generating and exporting activity reports.
-- **Responsive UI** – Tailwind-based layout optimized for desktop and mobile.
-
-## Screenshots
-
-- landing Page
-![landing-page-1](screenshots/landing-page-1.png)
-
-- Dashboard
-![dashboard](screenshots/dashboard.png)
-
-- Other landing pages
-![landing-page-2](screenshots/landing-page-2.png)
-
-![landing-page-3](screenshots/landing-page-3.png)
-
-![landing-page-4](screenshots/landing-page-4.png)
-
-
-## Tech Stack
-
-**Frontend**
-- React 18, TypeScript
-- Vite
-- Tailwind CSS + shadcn-ui components
-- React Router DOM
-- React Query (@tanstack/react-query)
-- Recharts for charts
-- Lucide icons, custom toast hook
-
-**Backend**
-- Node.js + Express
-- MongoDB with Mongoose
-- JWT authentication (jsonwebtoken)
-- dotenv, cors
+---
 
 ## Project Structure
 
-- `backend/` – Express API, Mongoose models, controllers, routes, and auth middleware.
-- `frontend/` – Vite React app with pages, components, UI primitives, and hooks.
-- `extension/` – Chrome extension for URL monitoring and content filtering.
-- `desktop-agent/` – Electron desktop agent that runs on a child’s computer, receives activity from the extension, forwards to the backend, and detects tampering when the extension stops responding.
-- `WARP.md` – Agent guidance and architecture notes for this repo.
+```
+sproutsafe/
+├── backend/          # Node.js + Express + MongoDB API
+├── frontend/         # React + Vite dashboard (parent UI)
+├── extension/        # Chrome extension (runs on child's browser)
+└── desktop-agent/    # Electron agent (runs on child's PC)
+```
 
-Refer to `frontend/README.md` and `backend/README.md` for directory-specific details.
+---
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- Node.js 18+
+- MongoDB (local) or MongoDB Atlas
+- Ollama (for voice assistant AI)
+- Google Chrome (for the extension)
 
-- Node.js and npm installed
-- A running MongoDB instance (local or hosted)
+---
 
-### Install Dependencies
+## Setup
 
-From the repo root:
+### 1. Backend
 
-```sh
+```bash
 cd backend
-npm install
-
-cd ../frontend
 npm install
 ```
 
-### Environment Configuration
-
 Create `backend/.env`:
+```env
+MONGO_URI=mongodb://127.0.0.1:27017/sproutsafe
+JWT_SECRET=your_long_random_secret_here
+PORT=5000
+NODE_ENV=development
+```
 
-```sh
-MONGO_URI="<your-mongodb-connection-uri>"
-JWT_SECRET="<jwt-signing-secret>"
-PORT=5000 # optional, defaults to 5000
+Start:
+```bash
+npm run dev
+```
+
+Runs on `http://localhost:5000`
+
+---
+
+### 2. Frontend
+
+```bash
+cd frontend
+npm install
 ```
 
 Create `frontend/.env`:
-
-```sh
-VITE_BACKENDURL="http://localhost:5000" # or your deployed backend URL
+```env
+VITE_BACKENDURL=http://localhost:5000
+VITE_OLLAMA_URL=http://localhost:11434
 ```
 
-### Running in Development
-
-Start the backend API:
-
-```sh
-cd backend
+Start:
+```bash
 npm run dev
 ```
 
-Start the frontend dashboard (in another terminal):
+Runs on `http://localhost:8080`
 
-```sh
-cd frontend
-npm run dev
+---
+
+### 3. Chrome Extension
+
+1. Open Chrome → `chrome://extensions`
+2. Enable **Developer mode** (top right toggle)
+3. Click **Load unpacked** → select the `extension/` folder
+4. SproutSafe icon appears in the Chrome toolbar
+
+---
+
+### 4. Desktop Agent (child's PC)
+
+```bash
+cd desktop-agent
+npm install
 ```
 
-The backend listens on `PORT` (default `5000`). Vite will serve the frontend (by default on `5173`).
-
-### Building for Production
-
-Build the frontend production bundle:
-
-```sh
-cd frontend
-npm run build
+Create `desktop-agent/.env`:
+```env
+SPROUT_AGENT_PORT=3030
+SPROUT_BACKEND_URL=http://localhost:5000
 ```
 
-You can then serve the built frontend from any static host, configured to talk to a running instance of the backend API.
+Start:
+```bash
+npm start
+```
 
-> There are no automated tests configured yet. `npm test` in `backend/` is a placeholder and will exit with a non-zero status.
+Runs silently on `http://127.0.0.1:3030`
 
-## High-Level Architecture
+---
 
-### Backend API
+### 5. Ollama (Voice Assistant)
 
-- Entry point: `backend/server.js`.
-- Configures CORS for local dev, ngrok tunnels, and Chrome extensions.
-- Connects to MongoDB via `mongoose.connect(MONGO_URI)` and mounts feature routers:
-  - `/api/auth` – parent signup/login and current user endpoint.
-  - `/api/parent` – parent-facing APIs to list and manage children.
-  - `/api/child` – child-centric stats and filtered web-usage endpoints.
-  - `/api/monitor` – monitoring endpoints used by extensions/clients to send URL activity and incognito alerts.
+```bash
+ollama pull llama3
+ollama serve
+```
 
-Core models:
+Runs on `http://localhost:11434`
 
-- `Parent` – name, email, password (currently plain text), and list of child references.
-- `Child` – email, name, extension token, blocked URLs, monitored URLs with a per-day time-spent map, and incognito alerts.
+---
 
-### Frontend Dashboard
+## How It Works
 
-- Entry point: `frontend/src/main.tsx` rendering `App`.
-- `App.tsx` sets up React Query, tooltip and toast providers, and routing via `react-router-dom`:
-  - `/` – marketing landing page (`Index`).
-  - `/dashboard` – main parent dashboard (`Dashboard`).
-  - `/login`, `/signup` – auth pages.
-  - `/add-child` – child profile creation.
-  - `/contact` and a catch-all `NotFound` route.
+```
+Parent signs up → creates child profile → gets extension token
+       ↓
+Child installs Chrome extension → enters token + parent password
+       ↓
+Extension monitors URLs, searches, incognito attempts
+       ↓
+Desktop agent watches extension heartbeat (tamper detection)
+       ↓
+Parent sees everything in real-time on the dashboard
+```
 
-Authentication flow:
+---
 
-1. Parent signs up or logs in via `/api/auth/signup` or `/api/auth/login`.
-2. Backend returns a JWT which is stored in `localStorage` under `token`.
-3. Dashboard and child-management pages read this token and send it as `Authorization: Bearer <token>` in API requests.
+## Features
 
-The dashboard composes multiple components for stats, charts, activity feeds, device/protection UIs, and report generation. Data is pulled from the backend’s `/api/auth`, `/api/parent`, `/api/child`, and `/api/monitor` endpoints, with some UI-only placeholders ready for future expansion.
+### Dashboard
+| Panel | What it does |
+|---|---|
+| Overview | Real-time activity feed, analytics cards, usage charts |
+| Profiles | Manage child profiles, view tokens, online/offline status |
+| Reports | Generate PDF reports filtered by day/week/month |
+| Timer Access | Grant temporary access to blocked sites for N minutes |
+| Settings | Change password, logout |
+
+### Protection (SuperSafe Mode)
+- Block ALL sites except an allowed whitelist
+- Block the Chrome extensions page (prevents disabling SproutSafe)
+- Add custom blocked keywords
+- Upload a voice message that plays when a site is blocked
+
+### Chrome Extension
+- Monitors every URL visited and time spent per domain
+- Detects and closes incognito/private windows
+- Blocks sites based on parent rules → redirects to warning page
+- Blocks and closes tabs for harmful search queries (see list below)
+- Replaces offensive text on any page with `****`
+- Blurs images with offensive alt text
+- Requires parent password to deactivate
+- Lockout for 1 hour after 3 wrong password attempts
+
+### Desktop Agent
+- Monitors extension heartbeat every 5 seconds
+- Sends tamper alert if extension stops responding
+- Logs agent start/stop events to dashboard
+
+### Voice Assistant
+- Floating mic button on the dashboard (bottom-right)
+- Supports English and Hindi
+- Powered by Ollama llama3 — fully local, no API key needed
+- Speaks responses aloud via browser speech synthesis
+
+---
+
+## Blocked Search Keywords
+
+The extension automatically closes the tab when any of these are searched on Google, Bing, or Yahoo:
+
+**Bypass / VPN**
+`proxy`, `vpn`, `unblock sites`, `bypass filter`, `bypass parental control`, `how to bypass`, `tor browser`, `disable sproutsafe`, `remove extension` and more
+
+**Violence / Harmful**
+`how to kill`, `how to murder`, `how to make a bomb`, `suicide methods`
+
+**Adult Content (English)**
+`porn`, `xxx`, `hentai`, `nude photos`, `rape video`, `child porn`, `lolita`, `onlyfans leak`
+
+**Adult Content (Hindi)**
+`chutiya`, `randi`, `madarchod`, `gandu`, `chudai`, `lund`, `chut`
+
+---
+
+## Activity Log Event Types
+
+Every event is stored in MongoDB and shown in the dashboard feed:
+
+| Type | Trigger |
+|---|---|
+| `BROWSING_ACTIVITY` | Child visits a website |
+| `SEARCH_ACTIVITY` | Child performs a search |
+| `INCOGNITO_ALERT` | Private/incognito window opened |
+| `BLOCKED_URL` | Site blocked by parent's block list |
+| `SUPERSAFE_BLOCK` | Site blocked by SuperSafe mode |
+| `BLOCKED_SEARCH` | Harmful search query detected, tab closed |
+| `EXTENSION_ACTIVATED` | Extension connected successfully |
+| `EXTENSION_DISCONNECTED` | Extension turned off |
+| `TAMPER_ALERT` | Extension stopped responding |
+| `SECURITY_ALERT` | 3 wrong password attempts |
+| `AGENT_EVENT` | Desktop agent started/stopped |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React, Vite, TypeScript, Tailwind CSS, shadcn/ui |
+| Backend | Node.js, Express, MongoDB, Mongoose, JWT |
+| Extension | Chrome Manifest V3, Service Worker |
+| Desktop Agent | Electron |
+| AI / Voice | Ollama llama3 (local) |
+| Auth | JWT (email + password, stored in MongoDB) |
+
+---
+
+## Environment Variables Reference
+
+### `backend/.env`
+| Variable | Description |
+|---|---|
+| `MONGO_URI` | MongoDB connection string |
+| `JWT_SECRET` | Secret for signing JWT tokens |
+| `PORT` | Server port (default: 5000) |
+| `NODE_ENV` | `development` or `production` |
+
+### `frontend/.env`
+| Variable | Description |
+|---|---|
+| `VITE_BACKENDURL` | Backend API base URL |
+| `VITE_OLLAMA_URL` | Ollama API URL (default: http://localhost:11434) |
+
+### `desktop-agent/.env`
+| Variable | Description |
+|---|---|
+| `SPROUT_AGENT_PORT` | Port for the local agent server |
+| `SPROUT_BACKEND_URL` | Backend API base URL |
