@@ -105,6 +105,75 @@ export function ReportsPanel({ childEmail, parentName }: ReportsPanelProps) {
     setSendingEmail(false);
   };
 
+  // Generate a fallback static summary when AI is unavailable
+  const generateFallbackSummary = (
+    childName: string,
+    totalTime: string,
+    usage: any[],
+    alerts: any[],
+    blocked: any[],
+    activities: any[],
+    days: string
+  ): string => {
+    const topSites = usage.slice(0, 5).map((u: any) => {
+      const totalSeconds = Object.values(u.dailyTimeSpent || {}).reduce(
+        (sum: number, val: unknown) => sum + (typeof val === "number" ? val : 0),
+        0
+      ) as number;
+      return { domain: u.domain, category: u.category || "Unknown", mins: Math.round(totalSeconds / 60) };
+    });
+
+    const totalMins = topSites.reduce((sum, s) => sum + s.mins, 0);
+    const avgDaily = Math.round(totalMins / parseInt(days));
+
+    let summary = `ACTIVITY SUMMARY FOR ${childName.toUpperCase()}\n`;
+    summary += `Period: Last ${days} days\n`;
+    summary += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    summary += `OVERVIEW\n`;
+    summary += `Total Screen Time: ${totalTime}\n`;
+    summary += `Average Daily Usage: ~${avgDaily} minutes\n`;
+    summary += `Sites Visited: ${usage.length}\n`;
+    summary += `Blocked Sites: ${blocked.length}\n\n`;
+
+    summary += `TOP VISITED SITES\n`;
+    if (topSites.length > 0) {
+      topSites.forEach((site, i) => {
+        summary += `${i + 1}. ${site.domain} (${site.category}) - ${site.mins} min\n`;
+      });
+    } else {
+      summary += `No browsing data available for this period.\n`;
+    }
+    summary += `\n`;
+
+    summary += `ALERTS & CONCERNS\n`;
+    if (alerts.length > 0) {
+      summary += `${alerts.length} alert(s) detected:\n`;
+      alerts.slice(0, 5).forEach((a: any) => {
+        const time = new Date(a.timestamp);
+        summary += `- ${a.url || "Unknown"} at ${time.toLocaleString()}\n`;
+      });
+    } else {
+      summary += `No alerts or concerning activity detected.\n`;
+    }
+    summary += `\n`;
+
+    summary += `RECOMMENDATIONS\n`;
+    if (avgDaily > 180) {
+      summary += `- Consider setting daily time limits (current avg: ${avgDaily}min/day)\n`;
+    }
+    if (alerts.length > 3) {
+      summary += `- Review blocked content attempts with your child\n`;
+    }
+    if (blocked.length === 0) {
+      summary += `- Consider adding age-appropriate content filters\n`;
+    }
+    summary += `- Have regular conversations about online safety\n`;
+    summary += `- Review browsing history together periodically\n`;
+
+    return summary;
+  };
+
   const handleGenerateAISummary = async () => {
     if (!childEmail) { toast.error("Please select a child profile first"); return; }
     setGeneratingAISummary(true);
@@ -185,13 +254,14 @@ Provide a summary that includes:
 Keep the tone supportive and helpful, not alarming. Use plain language a parent can easily understand.
 Format with clear sections. Be specific about times and sites when mentioning concerns.`;
 
+      // Try streaming response from Ollama
       const response = await fetch(`${OLLAMA_URL}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "llama3",
           prompt: `${systemPrompt}\n\nGenerate the activity summary report:`,
-          stream: false,
+          stream: true,
         }),
       });
 
@@ -199,13 +269,67 @@ Format with clear sections. Be specific about times and sites when mentioning co
         throw new Error(`Ollama HTTP ${response.status}`);
       }
 
-      const data = await response.json();
-      const summary = data?.response?.trim() || "Unable to generate summary. Please try again.";
-      setAISummary(summary);
+      // Stream the response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n").filter(Boolean);
+
+        for (const line of lines) {
+          try {
+            const json = JSON.parse(line);
+            if (json.response) {
+              fullText += json.response;
+              setAISummary(fullText);
+            }
+          } catch {
+            // Skip invalid JSON lines
+          }
+        }
+      }
+
+      if (!fullText.trim()) {
+        throw new Error("Empty response from AI");
+      }
     } catch (err) {
       console.error("AI Summary error:", err);
-      toast.error("Couldn't connect to AI. Make sure Ollama is running.");
-      setAISummary("Unable to generate AI summary. Please ensure Ollama is running locally and try again.");
+      
+      // Fallback: Generate static summary from the data
+      try {
+        const timeFrame = dateRange === "7" ? "week" : dateRange === "30" ? "month" : "today";
+        const [ud, ad, bd, actd] = await Promise.all([
+          fetchWebUsageStatsFull(childEmail),
+          fetchAlertsFull(childEmail),
+          fetchBlockedStatsFull(childEmail),
+          fetchActivities(childEmail, timeFrame),
+        ]);
+
+        const fallback = generateFallbackSummary(
+          child?.name || "Your Child",
+          ud.totalTime || "0m",
+          ud.usageDetails || [],
+          ad.alerts || [],
+          bd.blockedList || [],
+          actd.activities || [],
+          dateRange
+        );
+        
+        setAISummary(fallback);
+        toast.info("AI unavailable - showing data summary instead");
+      } catch {
+        toast.error("Couldn't connect to AI. Make sure Ollama is running.");
+        setAISummary("Unable to generate AI summary. Please ensure Ollama is running locally and try again.\n\nYou can still download PDF reports using the buttons below.");
+      }
     } finally {
       setGeneratingAISummary(false);
     }
@@ -249,7 +373,7 @@ Format with clear sections. Be specific about times and sites when mentioning co
                 >
                   <X className="h-4 w-4" />
                 </button>
-                {generatingAISummary ? (
+                {generatingAISummary && !aiSummary ? (
                   <div className="flex items-center gap-3 py-6">
                     <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
                     <span className="text-sm text-muted-foreground">
@@ -260,6 +384,9 @@ Format with clear sections. Be specific about times and sites when mentioning co
                   <div className="prose prose-sm dark:prose-invert max-w-none">
                     <div className="whitespace-pre-wrap text-sm leading-relaxed">
                       {aiSummary}
+                      {generatingAISummary && (
+                        <span className="inline-block w-2 h-4 ml-1 bg-emerald-500 animate-pulse" />
+                      )}
                     </div>
                   </div>
                 ) : null}
