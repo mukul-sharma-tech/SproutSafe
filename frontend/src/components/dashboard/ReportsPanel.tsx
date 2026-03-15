@@ -2,8 +2,9 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileText, Loader2, Mail } from "lucide-react";
+import { Download, FileText, Loader2, Mail, Sparkles, Bot, X } from "lucide-react";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
@@ -34,12 +35,17 @@ function buildChartData(usageDetails: any[], days: number) {
   });
 }
 
+const OLLAMA_URL = import.meta.env.VITE_OLLAMA_URL || "http://localhost:11434";
+
 export function ReportsPanel({ childEmail, parentName }: ReportsPanelProps) {
   const [dateRange, setDateRange] = useState("7");
   const [reportType, setReportType] = useState("all");
   const [generating, setGenerating] = useState(false);
   const [emailFreq, setEmailFreq] = useState("weekly");
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [generatingAISummary, setGeneratingAISummary] = useState(false);
+  const [aiSummary, setAISummary] = useState<string | null>(null);
+  const [showAISummary, setShowAISummary] = useState(false);
   const { data: children = [] } = useChildren();
   const { data: parent } = useParentProfile();
   const { data: usageData } = useWebUsageStatsFull(childEmail ?? null);
@@ -99,6 +105,112 @@ export function ReportsPanel({ childEmail, parentName }: ReportsPanelProps) {
     setSendingEmail(false);
   };
 
+  const handleGenerateAISummary = async () => {
+    if (!childEmail) { toast.error("Please select a child profile first"); return; }
+    setGeneratingAISummary(true);
+    setShowAISummary(true);
+    setAISummary(null);
+
+    try {
+      const timeFrame = dateRange === "7" ? "week" : dateRange === "30" ? "month" : "today";
+      const [ud, ad, bd, actd] = await Promise.all([
+        fetchWebUsageStatsFull(childEmail),
+        fetchAlertsFull(childEmail),
+        fetchBlockedStatsFull(childEmail),
+        fetchActivities(childEmail, timeFrame),
+      ]);
+
+      const usage = ud.usageDetails || [];
+      const alerts = ad.alerts || [];
+      const blocked = bd.blockedList || [];
+      const activities = actd.activities || [];
+      const totalTime = ud.totalTime || "0m";
+
+      // Build detailed activity context for AI
+      const topSites = usage.slice(0, 15).map((u: any) => {
+        const totalSeconds = Object.values(u.dailyTimeSpent || {}).reduce(
+          (sum: number, val: unknown) => sum + (typeof val === "number" ? val : 0),
+          0
+        ) as number;
+        const mins = Math.round(totalSeconds / 60);
+        
+        // Calculate time distribution (morning, afternoon, evening, night)
+        const timeDistribution: Record<string, number> = {};
+        Object.entries(u.dailyTimeSpent || {}).forEach(([date, seconds]) => {
+          const hour = new Date(date).getHours();
+          if (hour >= 6 && hour < 12) timeDistribution.morning = (timeDistribution.morning || 0) + (seconds as number);
+          else if (hour >= 12 && hour < 17) timeDistribution.afternoon = (timeDistribution.afternoon || 0) + (seconds as number);
+          else if (hour >= 17 && hour < 21) timeDistribution.evening = (timeDistribution.evening || 0) + (seconds as number);
+          else timeDistribution.night = (timeDistribution.night || 0) + (seconds as number);
+        });
+
+        return `${u.domain} (${u.category || "Unknown"}, ${mins}min, searches: ${u.searchQueries?.length || 0})`;
+      }).join("\n");
+
+      const alertDetails = alerts.slice(0, 10).map((a: any) => {
+        const time = new Date(a.timestamp);
+        const hour = time.getHours();
+        const period = hour >= 21 || hour < 6 ? "late night" : hour >= 17 ? "evening" : "daytime";
+        return `${a.url} at ${time.toLocaleString()} (${period})`;
+      }).join("\n");
+
+      const recentActivity = activities.slice(0, 20).map((a: any) => 
+        `${a.type}: ${a.content} at ${new Date(a.timestamp).toLocaleString()}`
+      ).join("\n");
+
+      const systemPrompt = `You are an AI assistant helping parents understand their child's digital activity.
+Analyze the following browsing data and provide a clear, actionable summary.
+
+CHILD: ${child?.name || "Unknown"}
+TIME PERIOD: Last ${dateRange} days
+TOTAL SCREEN TIME: ${totalTime}
+
+TOP VISITED SITES:
+${topSites || "No data"}
+
+BLOCKED ATTEMPTS/ALERTS (incognito, blocked searches):
+${alertDetails || "No alerts"}
+
+RECENT ACTIVITY LOG:
+${recentActivity || "No recent activity"}
+
+CURRENTLY BLOCKED SITES: ${blocked.length} sites
+
+Provide a summary that includes:
+1. Overview of browsing habits (2-3 sentences)
+2. Any concerning patterns (late night usage, blocked content attempts, excessive time on specific sites)
+3. Positive observations if any
+4. 2-3 specific, actionable recommendations
+
+Keep the tone supportive and helpful, not alarming. Use plain language a parent can easily understand.
+Format with clear sections. Be specific about times and sites when mentioning concerns.`;
+
+      const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3",
+          prompt: `${systemPrompt}\n\nGenerate the activity summary report:`,
+          stream: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ollama HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const summary = data?.response?.trim() || "Unable to generate summary. Please try again.";
+      setAISummary(summary);
+    } catch (err) {
+      console.error("AI Summary error:", err);
+      toast.error("Couldn't connect to AI. Make sure Ollama is running.");
+      setAISummary("Unable to generate AI summary. Please ensure Ollama is running locally and try again.");
+    } finally {
+      setGeneratingAISummary(false);
+    }
+  };
+
   const chartTooltipStyle = {
     backgroundColor: "hsl(var(--card))",
     border: "1px solid hsl(var(--border))",
@@ -108,6 +220,72 @@ export function ReportsPanel({ childEmail, parentName }: ReportsPanelProps) {
 
   return (
     <div className="space-y-4">
+      {/* AI Activity Report Summary */}
+      <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-teal-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base heading-serif flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <Bot className="h-4 w-4 text-white" />
+            </div>
+            AI Activity Report Summary
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Get an AI-powered plain-English analysis of your child's browsing activity
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <AnimatePresence mode="wait">
+            {showAISummary && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="relative rounded-lg border border-border bg-card p-4"
+              >
+                <button
+                  type="button"
+                  onClick={() => { setShowAISummary(false); setAISummary(null); }}
+                  className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                {generatingAISummary ? (
+                  <div className="flex items-center gap-3 py-6">
+                    <Loader2 className="h-5 w-5 animate-spin text-emerald-500" />
+                    <span className="text-sm text-muted-foreground">
+                      Analyzing {child?.name || "child"}'s activity data...
+                    </span>
+                  </div>
+                ) : aiSummary ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                      {aiSummary}
+                    </div>
+                  </div>
+                ) : null}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              Powered by Ollama (llama3) - Uses actual browsing data
+            </div>
+            <Button 
+              onClick={handleGenerateAISummary} 
+              disabled={generatingAISummary || !childEmail}
+              className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+            >
+              {generatingAISummary ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Generate AI Report
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Weekly Summary */}
         <Card>

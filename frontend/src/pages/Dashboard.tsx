@@ -11,16 +11,20 @@ import { useDashboardGuard } from "@/hooks/useDashboardGuard";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { ChildrenSection } from "@/components/dashboard/ChildrenSection";
 import { VoiceAssistant } from "@/components/voice/VoiceAssistant";
+import { AIParentingChat } from "@/components/dashboard/AIParentingChat";
 import { AddChildModal } from "@/components/child/AddChildModal";
 import { DashboardLockScreen } from "@/components/layout/DashboardLockScreen";
 import { useQueryClient } from "@tanstack/react-query";
+import { useChildren } from "@/hooks/use-children";
 
 export default function Dashboard() {
   const [activeView, setActiveView] = useState("overview");
   const [showAddChildModal, setShowAddChildModal] = useState(false);
   const [isLocked, setIsLocked] = useState(() => sessionStorage.getItem("dashboard_locked") === "true");
+  const [currentChildEmail, setCurrentChildEmail] = useState<string | null>(null);
   const { isAllowed, showVerification } = useDashboardGuard();
   const qc = useQueryClient();
+  const { data: childProfiles = [] } = useChildren();
 
   const handleLockEvent = useCallback(() => setIsLocked(true), []);
 
@@ -45,7 +49,12 @@ export default function Dashboard() {
         onViewChange={setActiveView}
         onAddChildClick={() => setShowAddChildModal(true)}
       >
-        {({ selectedChildEmail, childProfiles, parentName }: { selectedChildEmail: string | null; childProfiles: any[]; parentName: string; parentEmail: string }) => (
+        {({ selectedChildEmail, childProfiles: profiles, parentName }: { selectedChildEmail: string | null; childProfiles: any[]; parentName: string; parentEmail: string }) => {
+          // Use a microtask to sync the selected child email to avoid setState during render
+          if (selectedChildEmail !== currentChildEmail) {
+            queueMicrotask(() => setCurrentChildEmail(selectedChildEmail));
+          }
+          return (
           <>
             {activeView === "overview" && (
               <div className="space-y-6">
@@ -58,7 +67,7 @@ export default function Dashboard() {
                 {/* Overview with integrated Activity Monitor & Feed */}
                 <OverviewPanel
                   childEmail={selectedChildEmail}
-                  childName={childProfiles.find((c) => c.email === selectedChildEmail)?.name ?? null}
+                  childName={profiles.find((c) => c.email === selectedChildEmail)?.name ?? null}
                 />
 
                 {/* Bottom: children / profiles summary */}
@@ -68,7 +77,7 @@ export default function Dashboard() {
 
             {activeView === "profiles" && (
               <ProfilesPanel
-                children={childProfiles}
+                children={profiles}
                 onSelectChild={() => {}}
                 onSwitchToOverview={() => setActiveView("overview")}
               />
@@ -82,7 +91,8 @@ export default function Dashboard() {
 
             {activeView === "timer-based" && <TimerBlockPanel />}
           </>
-        )}
+        );
+        }}
       </DashboardLayout>
       <AddChildModal
         open={showAddChildModal}
@@ -93,6 +103,10 @@ export default function Dashboard() {
         }}
       />
       <VoiceAssistant />
+      <AIParentingChat 
+        childEmail={currentChildEmail} 
+        childName={childProfiles.find((c: any) => c.email === currentChildEmail)?.name ?? null}
+      />
     </>
   );
 }
