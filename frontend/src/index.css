@@ -1,0 +1,182 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* CyberNest — fresh green brand */
+    --background: 0 0% 100%;
+    --foreground: 150 15% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 150 15% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 15% 8%;
+    --primary: 152 60% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 20% 95%;
+    --secondary-foreground: 150 15% 15%;
+    --muted: 150 12% 95%;
+    --muted-foreground: 150 8% 46%;
+    --accent: 150 20% 93%;
+    --accent-foreground: 150 15% 15%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 150 12% 88%;
+    --input: 150 12% 88%;
+    --ring: 152 60% 38%;
+    --radius: 0.625rem;
+    --sidebar-background: 150 20% 98%;
+    --sidebar-foreground: 150 12% 26%;
+    --sidebar-primary: 152 60% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 20% 93%;
+    --sidebar-accent-foreground: 150 15% 15%;
+    --sidebar-border: 150 12% 90%;
+    --sidebar-ring: 152 60% 38%;
+    --chart-1: 152 60% 38%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 43 96% 56%;
+    --chart-4: 262 83% 58%;
+    --chart-5: 0 84% 60%;
+  }
+
+  .dark {
+    --background: 150 20% 5%;
+    --foreground: 150 10% 92%;
+    --card: 150 18% 7%;
+    --card-foreground: 150 10% 92%;
+    --popover: 150 18% 7%;
+    --popover-foreground: 150 10% 92%;
+    --primary: 152 55% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 15% 12%;
+    --secondary-foreground: 150 10% 90%;
+    --muted: 150 15% 12%;
+    --muted-foreground: 150 8% 58%;
+    --accent: 150 15% 14%;
+    --accent-foreground: 150 10% 90%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 150 15% 16%;
+    --input: 150 15% 16%;
+    --ring: 152 55% 48%;
+    --sidebar-background: 150 20% 5%;
+    --sidebar-foreground: 150 10% 88%;
+    --sidebar-primary: 152 55% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 15% 12%;
+    --sidebar-accent-foreground: 150 10% 88%;
+    --sidebar-border: 150 15% 14%;
+    --sidebar-ring: 152 55% 48%;
+    --chart-1: 152 55% 48%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 43 96% 56%;
+    --chart-4: 262 83% 58%;
+    --chart-5: 0 84% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+.heading-serif {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+}
+
+/* CyberNest brand gradient */
+.sprout-gradient {
+  background: linear-gradient(135deg, hsl(152 60% 38%), hsl(170 55% 42%));
+}
+
+.sprout-gradient-text {
+  background: linear-gradient(135deg, hsl(152 60% 38%), hsl(170 55% 42%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes meteor {
+  0% {
+    transform: translateY(0) translateX(0) rotate(215deg);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(600px) translateX(-300px) rotate(215deg);
+    opacity: 0;
+  }
+}
+
+.animate-meteor {
+  animation: meteor linear infinite;
+}
+
+@keyframes aurora {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-aurora {
+  animation: aurora 8s ease infinite;
+  background-size: 200% 200%;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.25) transparent;
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: transparent; border-radius: 9999px; }
+*:hover::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.2); }
+*:hover::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
+
