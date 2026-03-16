@@ -19,7 +19,6 @@ import { HowItWorksSection } from "@/components/home/HowItWorksSection";
 import { StorytellingSection } from "@/components/home/StorytellingSection";
 import { SuperSafeSection } from "@/components/home/SuperSafeSection";
 import { HomeFooter } from "@/components/home/HomeFooter";
-import { VideoModal } from "@/components/home/VideoModal";
 import { ExtensionInstallGuide } from "@/components/home/ExtensionInstallGuide";
 
 const pricingPlans = [
@@ -202,8 +201,6 @@ export default function Index() {
 
         <HomeFooter />
       </div>
-
-      <VideoModal />
 
       {authModalOpen && (
         <AuthModal
