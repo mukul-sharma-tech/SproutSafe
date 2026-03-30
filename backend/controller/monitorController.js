@@ -331,6 +331,74 @@ export const disconnectExtension = async (req, res) => {
   }
 };
 
+export const verifyRemoval = async (req, res) => {
+  try {
+    const { email } = req.user;
+    const { password } = req.body;
+
+    const child = await Child.findOne({ email });
+    if (!child) return res.status(404).json({ message: "Child not found" });
+
+    // Check for lockout
+    if (child.lockoutUntil && child.lockoutUntil > new Date()) {
+      return res.status(403).json({
+        message: "Too many failed attempts. Extension locked.",
+        lockoutUntil: child.lockoutUntil,
+      });
+    }
+
+    const parentDoc = await parent.findOne({ children: child._id });
+    if (!parentDoc) return res.status(404).json({ message: "Parent not found" });
+
+    const validPassword = await bcrypt.compare(password, parentDoc.password);
+    if (!validPassword) {
+      child.failedAttempts = (child.failedAttempts || 0) + 1;
+
+      if (child.failedAttempts >= 3) {
+        const lockoutTime = new Date(Date.now() + 60 * 60 * 1000);
+        child.lockoutUntil = lockoutTime;
+        child.failedAttempts = 0;
+        await child.save();
+
+        await logActivity({
+          child: child._id,
+          type: "SECURITY_ALERT",
+          domain: null,
+          message: `🔴 SECURITY ALERT: 3 wrong password attempts to remove ${child.name}'s extension. Locked for 1 hour.`,
+        });
+
+        return res.status(403).json({
+          message: "Too many failed attempts. Extension locked for 1 hour.",
+          lockoutUntil: lockoutTime,
+        });
+      }
+
+      await child.save();
+      return res.status(401).json({
+        message: `Incorrect password. ${3 - child.failedAttempts} attempt(s) remaining.`,
+        trialsRemaining: 3 - child.failedAttempts,
+      });
+    }
+
+    // Success
+    child.failedAttempts = 0;
+    child.lockoutUntil = null;
+    await child.save();
+
+    await logActivity({
+      child: child._id,
+      type: "EXTENSION_REMOVAL_AUTHORIZED",
+      domain: null,
+      message: `⚠️ Extension removal authorized for ${child.name} — parent password verified`,
+    });
+
+    res.status(200).json({ message: "Password verified. Extension removal authorized." });
+  } catch (error) {
+    console.error("Verify removal error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 export const tamperAlert = async (req, res) => {
   try {
     const { email } = req.user;
