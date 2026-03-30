@@ -1,4 +1,4 @@
-# CyberNest — Hackathon Pitch Script
+# CyberNest -- Hackathon Pitch Script
 ### 10-Minute Presentation (including live demo)
 
 ---
