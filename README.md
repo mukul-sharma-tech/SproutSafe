@@ -182,10 +182,8 @@ The extension automatically closes the tab when any of these are searched on Goo
 `how to kill`, `how to murder`, `how to make a bomb`, `suicide methods`
 
 **Adult Content (English)**
-`porn`, `xxx`, `hentai`, `nude photos`, `rape video`, `child porn`, `lolita`, `onlyfans leak`
 
 **Adult Content (Hindi)**
-`chutiya`, `randi`, `madarchod`, `gandu`, `chudai`, `lund`, `chut`
 
 ---
 
